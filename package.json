@@ -1,0 +1,43 @@
+{
+  "name": "@oneminutelogs/next",
+  "version": "1.0.0",
+  "description": "A Lightweight npm package for working with one minute logs. Set up your logging pipeline within one minute.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "prepare": "npm run clean && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/One-Minute-Stack/oneminutelogs-next.git"
+  },
+  "keywords": [
+    "logs",
+    "one-minute-stack",
+    "structured-logging",
+    "monitoring",
+    "observability",
+    "audit",
+    "security"
+  ],
+  "author": "One Minute Stack",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/One-Minute-Stack/oneminutelogs-next/issues"
+  },
+  "homepage": "https://github.com/One-Minute-Stack/oneminutelogs-next#readme",
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "nats": "^2.29.3"
+  }
+}
