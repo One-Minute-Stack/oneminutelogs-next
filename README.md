@@ -1,18 +1,21 @@
 # @oneminutelogs/next
 
 The official Next.js/TypeScript SDK for [OneMinuteLogs](https://oneminutelogs.com).
-A lightweight, type-safe logging package that sends structured log messages to your OneMinuteLogs dashboard with automatic enrichment for tracking, security, and metrics data.
+
+This package provides a lightweight, type-safe way to send structured logs to your OneMinuteLogs dashboard. It includes automatic enrichment for tracking, security context, and performance metrics.
+
+**Official Documentation:** [oneminutestack.com/docs/nextjs](https://oneminutestack.com/docs/nextjs)
 
 ## Features
 
-- 🚀 **Instant Setup**: Get up and running in less than a minute.
-- 🔒 **Type-Safe**: Full TypeScript support with comprehensive type definitions.
-- 🔍 **Structured Logging**: Well-defined schemas for Errors, Warnings, Info, Audits, and Metrics.
-- 🛡️ **Security Context**: Built-in support for tracking authentication status, suspicious activities, and security tags.
-- 👤 **User Tracking**: Attach user IDs, roles, and session data to every log.
-- 📊 **Performance Metrics**: Log latency, database query counts, and other performance indicators.
-- 📡 **Live Streaming**: Subscribe to real-time log streams directly from your application.
-- 💾 **Log Retrieval**: Query historical logs programmatically.
+- **Instant Setup**: Get up and running quickly with minimal configuration.
+- **Type-Safe**: Full TypeScript support with comprehensive type definitions.
+- **Structured Logging**: Well-defined schemas for Errors, Warnings, Info, Audits, and Metrics.
+- **Security Context**: Built-in support for tracking authentication status, suspicious activities, and security tags.
+- **User Tracking**: Attach user IDs, roles, and session data to every log.
+- **Performance Metrics**: Log latency, database query counts, and other performance indicators.
+- **Live Streaming**: Subscribe to real-time log streams directly from your application.
+- **Log Retrieval**: Query historical logs programmatically.
 
 ## Installation
 
@@ -26,35 +29,37 @@ pnpm add @oneminutelogs/next
 
 ## Quick Start
 
-1. **Initialize the Logger**
-   Create a logger instance, typically in a shared utility file (e.g., `src/lib/logger.ts`).
+### 1. Initialize the Logger
 
-   ```typescript
-   import { createLogger } from "@oneminutelogs/next";
+Create a logger instance, typically in a shared utility file (e.g., `src/lib/logger.ts`).
 
-   export const logger = createLogger({
-     apiKey: process.env.ONE_MINUTE_LOGS_API_KEY!,
-     appName: "my-nextjs-app", // Optional
-     environment: process.env.NODE_ENV || "development", // Optional
-   });
-   ```
+```typescript
+import { createLogger } from "@oneminutelogs/next";
 
-2. **Log a Message**
-   Use the typed helper methods to send logs from your server-side code (API routes, Server Actions, etc.).
+export const logger = createLogger({
+  apiKey: process.env.ONE_MINUTE_LOGS_API_KEY!,
+  appName: "my-nextjs-app", // Optional
+  environment: process.env.NODE_ENV || "development", // Optional
+});
+```
 
-   ```typescript
-   // Simple info log
-   await logger.info({
-     message: "Application started successfully"
-   });
+### 2. Log a Message
 
-   // Error with context
-   await logger.error({
-     message: "Database connection failed",
-     importance: "critical",
-     subsystem: "db"
-   });
-   ```
+Use the typed helper methods to send logs from your server-side code (API routes, Server Actions, etc.).
+
+```typescript
+// Simple info log
+await logger.info({
+  message: "Application started successfully"
+});
+
+// Error with context
+await logger.error({
+  message: "Database connection failed",
+  importance: "critical",
+  subsystem: "db"
+});
+```
 
 ## Configuration
 
@@ -194,6 +199,6 @@ import type { LogPayload } from "@oneminutelogs/next";
 
 ---
 
-<p align="center">
-  Built with ❤️ by the One Minute Stack team.
-</p>
+## Support
+
+If you have any questions or need assistance, please contact us at [contact@oneminutestack.com](mailto:contact@oneminutestack.com).
