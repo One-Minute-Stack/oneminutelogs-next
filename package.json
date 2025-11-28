@@ -26,18 +26,15 @@
     "audit",
     "security"
   ],
-  "author": "One Minute Stack",
+  "author": "OneMinute Stack",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/One-Minute-Stack/oneminutelogs-next/issues"
   },
-  "homepage": "https://github.com/One-Minute-Stack/oneminutelogs-next#readme",
+  "homepage": "https://oneminutelogs.com/docs/nextjs",
   "devDependencies": {
     "@types/node": "^24.3.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
-  },
-  "dependencies": {
-    "nats": "^2.29.3"
   }
 }
