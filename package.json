@@ -1,6 +1,6 @@
 {
   "name": "@oneminutelogs/next",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Lightweight npm package for working with one minute logs. Set up your logging pipeline within one minute.",
   "type": "module",
   "main": "dist/index.js",
@@ -36,5 +36,8 @@
     "@types/node": "^24.3.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "react": "^19.2.0"
   }
 }
