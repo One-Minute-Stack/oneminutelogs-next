@@ -1,303 +1,156 @@
 # @oneminutelogs/next
 
-The official Next.js SDK for [OneMinute Logs](https://oneminutelogs.com). Send structured events from server-side code, query stored logs, stream live events into client components, and verify alert webhooks.
+The official Next.js SDK for [OneMinute Logs](https://oneminutelogs.com). Send structured server logs, embed an authenticated monitoring dashboard, and view historical or live events.
 
-## Features
-
-- Type-safe structured logging for errors, warnings, audits, metrics, and informational events
-- Buffered, batched delivery to reduce request overhead
-- App Router request handler for securely proxying log queries and live streams
-- React hooks for historical logs and Server-Sent Events (SSE)
-- Webhook signature verification
-- TypeScript declarations included
-
-## Requirements
-
-- A Next.js application using the App Router
-- A OneMinute Logs API key
-- A runtime with native `fetch`, `Request`, `Response`, and `ReadableStream` support
-
-## Installation
+## Install
 
 ```bash
 npm install @oneminutelogs/next
 ```
 
-```bash
-pnpm add @oneminutelogs/next
-```
+Requires Node.js 18+, React 18+, and Next.js App Router for the route examples below.
 
-```bash
-yarn add @oneminutelogs/next
-```
+## Send logs
 
-## Quick start
-
-### 1. Add your API key
-
-Add the key to `.env.local`. Keep it server-side and never prefix it with `NEXT_PUBLIC_`.
-
-```bash
-ONE_MINUTE_LOGS_API_KEY=your_api_key
-```
-
-### 2. Create a shared logger
+Set `ONE_MINUTE_LOGS_API_KEY` in your server environment. Never expose it through a `NEXT_PUBLIC_*` variable.
 
 ```ts
 // lib/logs.ts
+import "server-only";
 import { createLogger } from "@oneminutelogs/next";
 
-export const log = createLogger({
+export const logger = createLogger({
   apiKey: process.env.ONE_MINUTE_LOGS_API_KEY!,
-  appName: "my-next-app",
-  environment: process.env.NODE_ENV ?? "development",
+  projectName: "my-app",
+  serviceName: "my-api",
+  environment: process.env.NODE_ENV || "development",
 });
 ```
 
-Create the logger in server-only code. Do not import it into a client component because it contains your API key.
-
-### 3. Send an event
-
-Use the logger in Route Handlers, Server Actions, or other server-side modules.
+Use the logger from Route Handlers, Server Actions, or other server modules:
 
 ```ts
-// app/api/orders/route.ts
-import { log } from "@/lib/logs";
+await logger.info({
+  message: "Account created",
+  eventName: "account.created",
+  attributes: { "user.id": user.id },
+});
+```
 
-export async function POST(request: Request) {
-  const order = await request.json();
+Available methods: `trace`, `debug`, `info`, `warn`, `error`, and `fatal`. Payloads support `message`, `eventName`, `attributes`, `timestamp`, and optional `traceId` / `spanId` from your tracing context. Configuration also accepts `serviceVersion` and `defaultAttributes`.
 
-  await log.info({
-    message: "Order received",
-    subsystem: "orders",
-    operation: "create-order",
-    track: {
-      user_id: order.userId,
-    },
-  });
+Logs are buffered and sent in batches. Awaiting a logging call confirms queuing, not delivery to OML.
 
-  return Response.json({ ok: true });
+## Embed the dashboard
+
+### 1. Configure access
+
+Set these additional **server-only** environment variables to protect the dashboard:
+
+```dotenv
+ONE_MINUTE_LOGS_ADMIN_PASSWORD=replace-with-a-strong-password
+ONE_MINUTE_LOGS_ADMIN_SESSION_SECRET=replace-with-a-long-random-signing-secret
+```
+
+Use independent secrets and the same values across application replicas. Changing them invalidates existing sessions. The OneMinute CLI can generate these values during initialization.
+
+### 2. Add the forwarding route
+
+```ts
+// app/api/oneminutelogs/[...path]/route.ts
+import { forwardRequest } from "@oneminutelogs/next";
+import { logger } from "@/lib/logs";
+
+const handler = forwardRequest({ logger });
+
+export {
+  handler as GET,
+  handler as POST,
+  handler as PUT,
+  handler as PATCH,
+  handler as DELETE,
+  handler as HEAD,
+  handler as OPTIONS,
+};
+```
+
+Use one catch-all route. Replace an existing `[type]` or `[types]` route instead of keeping both. Credentials stay on the server; dashboard access requires the admin session.
+
+### 3. Render the dashboard
+
+```tsx
+// app/monitoring/page.tsx
+import { OMLDashboard } from "@oneminutelogs/next/dashboard";
+
+export default function MonitoringPage() {
+  return (
+    <OMLDashboard
+      theme="light"
+      styling={{
+        shell: { fontFamily: "Arial, sans-serif" },
+        sidebar: { borderRight: "1px solid #d8e0eaa3" },
+        title: { letterSpacing: "-0.02em" },
+      }}
+    />
+  );
 }
 ```
 
-Events are buffered and sent in batches in the background.
+The dashboard includes Overview, API Performance, Browser Health, Realtime Logs, Incidents, Alerts, and Billing. Its password gate and stylesheet are included; no Tailwind setup or CSS import is required.
 
-## Logging API
+`theme` accepts `"light"` or `"dark"`; omitted or `null` defaults to dark. The optional `styling` object accepts React CSS properties for these elements:
 
-The logger provides typed convenience methods:
+`root`, `frame`, `shell`, `sidebar`, `navigation`, `navItem`, `activeNavItem`, `sidebarFooter`, `usage`, `content`, `main`, `pageHeading`, `title`, `description`.
+
+The embedded dashboard uses the `/api/oneminutelogs` route. Browser Health requires browser telemetry; rendering the dashboard alone does not collect it.
+
+## Add browser monitoring
+
+Install `@oneminutelogs/browser` and wrap your application with its `OMLProvider`. See the [browser SDK setup](https://github.com/One-Minute-Stack/oneminutelogs-browser#readme).
+
+Enable browser forwarding on the same catch-all handler:
 
 ```ts
-await log.info({ message: "Checkout started" });
-
-await log.warning({
-  message: "Payment provider is responding slowly",
-  importance: "medium",
-  subsystem: "payments",
-  metrics: { latency_ms: 1850 },
-});
-
-await log.error({
-  message: "Payment failed",
-  importance: "high",
-  subsystem: "payments",
-  operation: "charge-card",
-});
-
-await log.audit({
-  message: "Administrator changed a user role",
-  security: {
-    auth_status: "success",
-    tags: ["permissions", "admin"],
-  },
-  track: {
-    user_id: "user_123",
-    role: "admin",
-  },
-});
-
-await log.metric({
-  message: "Database query completed",
-  metrics: {
-    latency_ms: 42,
-    db_query_count: 1,
+const handler = forwardRequest({
+  logger,
+  browser: {
+    apiKey: process.env.ONE_MINUTE_LOGS_API_KEY!,
+    projectName: "my-app",
+    environment: process.env.NODE_ENV || "development",
+    routeTemplates: ["/", "/jobs/[id]"],
+    endpointTemplates: ["/api/jobs/[id]"],
   },
 });
 ```
 
-Available methods are `info`, `warning`, `error`, `audit`, `metric`, and `send`. Use `send` when specifying the event type directly:
+Keep the method exports above and configure matching route and endpoint templates on `OMLProvider`. Browser submissions do not require a dashboard admin session.
 
-```ts
-await log.send({
-  type: "success",
-  message: "Deployment completed",
-  importance: "low",
-});
-```
+## Build a custom log view
 
-### Logger configuration
-
-| Option | Type | Required | Description |
-| --- | --- | --- | --- |
-| `apiKey` | `string` | Yes | Your OneMinute Logs API key. |
-| `appName` | `string` | No | Default application name. Defaults to `default`. |
-| `environment` | `string` | No | Default environment. Falls back to `NODE_ENV`, then `development`. |
-
-Each event can override `appName` and `environment`.
-
-## Querying logs from the browser
-
-The client hooks call `/api/oneminutelogs/logs` and `/api/oneminutelogs/stream`. Create a catch-all App Router handler that forwards those requests without exposing your API key.
-
-```ts
-// app/api/oneminutelogs/[type]/route.ts
-import { log } from "@/lib/logs";
-import { handleProcessRequest } from "@oneminutelogs/next";
-
-const forwardRequest = (request: Request) =>
-  handleProcessRequest({
-    request,
-    logger: log,
-    authorize: async (request) => {
-      // Replace this with your application's authorization check.
-      return Boolean(request.headers.get("cookie"));
-    },
-  });
-
-export const GET = forwardRequest;
-```
-
-The final URL segment must be either `logs` or `stream`. The `authorize` callback is strongly recommended for dashboards containing private data.
-
-If your authentication provider supplies a bearer token expected by OneMinute Logs, pass it as `authToken`:
-
-```ts
-return handleProcessRequest({
-  request,
-  logger: log,
-  authToken: token,
-});
-```
-
-### Historical logs
-
-`getLogs` is a React hook and must be called from a client component.
+Client components can use `getLogs(filters?)` for historical events and `getStream(filters?)` for live events. Both use the protected forwarding route. Wrap custom views with `OMLAdminGate` from `@oneminutelogs/next/admin` for password login.
 
 ```tsx
 "use client";
 
 import { getLogs } from "@oneminutelogs/next";
 
-export default function ErrorList() {
-  const { data, isLoading, error, refetch } = getLogs({
+export function ErrorList() {
+  const { data, isLoading, error } = getLogs({
     type: "error",
-    environment: "production",
+    range: "24h",
     limit: 100,
   });
 
   if (isLoading) return <p>Loading…</p>;
-  if (error) return <p>{error.message}</p>;
-
-  return (
-    <div>
-      <button onClick={refetch}>Refresh</button>
-      {data?.map((event: any) => (
-        <p key={event.keyId}>{event.message}</p>
-      ))}
-    </div>
-  );
+  if (error) return <p>Unable to load logs.</p>;
+  return <>{data?.map(event => <p key={event.id}>{event.message}</p>)}</>;
 }
 ```
 
-### Live events
-
-`getStream` opens an SSE connection and keeps up to 5,000 normalized events in memory.
-
-```tsx
-"use client";
-
-import { getStream } from "@oneminutelogs/next";
-
-export default function LiveEvents() {
-  const { data, isLoading, error, connected, disconnect } = getStream({
-    type: "error",
-  });
-
-  return (
-    <section>
-      <p>{connected ? "Connected" : "Disconnected"}</p>
-      <button onClick={disconnect}>Disconnect</button>
-      {isLoading && <p>Connecting…</p>}
-      {error && <p>{error.message}</p>}
-      {data.map((event) => (
-        <p key={event.id}>
-          [{event.level}] {event.message}
-        </p>
-      ))}
-    </section>
-  );
-}
-```
-
-## Webhook verification
-
-Verify OneMinute Logs alert webhooks before processing their contents.
-
-```ts
-// app/api/webhooks/oneminutelogs/route.ts
-import { log } from "@/lib/logs";
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-
-    await log.verifyWebhook({
-      signature: request.headers.get("x-oml-signature") ?? "",
-      timestamp: request.headers.get("x-oml-timestamp") ?? "",
-      body,
-    });
-
-    // Process the verified event here.
-    return Response.json({ success: true });
-  } catch {
-    return Response.json(
-      { success: false, error: "Invalid webhook" },
-      { status: 401 },
-    );
-  }
-}
-```
-
-## Exports
-
-| Export | Purpose |
-| --- | --- |
-| `createLogger(config)` | Creates the server-side logger. |
-| `handleProcessRequest(options)` | Proxies log queries and SSE streams through an App Router handler. |
-| `getLogs(filters?)` | Client hook for querying stored events. |
-| `getStream(filters?)` | Client hook for consuming live events over SSE. |
-| `OMLTransport` | Low-level transport used by the logger. |
-| `LoggerConfig`, `LogPayload`, `LogLevel` | Exported TypeScript types. |
-
-## Security notes
-
-- Keep the API key in server-only environment variables.
-- Never create the logger in a client component.
-- Protect the proxy route with your application's authentication and authorization checks.
-- Always verify webhook signatures before acting on webhook data.
-
-## Development
-
-```bash
-npm install
-npm run build
-```
+Filters include `type`, `env`, `appName`, `search`, and `limit`; historical reads also accept `range`. `getStream` returns `data`, `isLoading`, `error`, `connected`, and `disconnect`.
 
 ## Support
 
-- [Documentation](https://oneminutelogs.com/docs/nextjs)
-- [Issue tracker](https://github.com/One-Minute-Stack/oneminutelogs-next/issues)
-- [contact@oneminutelogs.com](mailto:contact@oneminutelogs.com)
+[Documentation](https://oneminutelogs.com/docs/nextjs) · [Report an issue](https://github.com/One-Minute-Stack/oneminutelogs-next/issues)
 
-## License
-
-ISC
+ISC license.

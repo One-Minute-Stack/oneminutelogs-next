@@ -1,6 +1,6 @@
 {
   "name": "@oneminutelogs/next",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "A Lightweight npm package for working with one minute logs. Set up your logging pipeline within one minute.",
   "type": "module",
   "main": "dist/index.cjs",
@@ -8,10 +8,15 @@
   "files": [
     "dist"
   ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "build": "npm run clean && tsup src/index.ts --format cjs --dts --splitting false --target node18",
+    "build": "npm run clean && tsup",
     "clean": "rm -rf dist",
-    "prepack": "npm run clean && npm run build"
+    "prepack": "npm run clean && npm run build",
+    "test": "npm run build && node --test test/*.test.cjs",
+    "test:dashboard-browser": "npm run build && node test/dashboard-browser.mjs"
   },
   "repository": {
     "type": "git",
@@ -32,14 +37,40 @@
     "url": "https://github.com/One-Minute-Stack/oneminutelogs-next/issues"
   },
   "homepage": "https://oneminutelogs.com/docs/nextjs",
+  "peerDependencies": {
+    "react": ">=18",
+    "@oneminutelogs/browser": "^1.0.0"
+  },
   "devDependencies": {
     "@types/node": "^26.0.0",
     "@types/react": "^19.2.17",
+    "react": "^19.2.7",
     "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
     "typescript": "^6.0.3"
   },
-  "dependencies": {
-    "react": "^19.2.7",
-    "tsup": "^8.5.1"
-  }
+  "peerDependenciesMeta": {
+    "@oneminutelogs/browser": {
+      "optional": true
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.cts",
+      "default": "./dist/index.cjs"
+    },
+    "./admin": {
+      "types": "./dist/admin.d.cts",
+      "default": "./dist/admin.cjs"
+    },
+    "./package.json": "./package.json",
+    "./dashboard": {
+      "types": "./dist/dashboard.d.ts",
+      "import": "./dist/dashboard.js",
+      "default": "./dist/dashboard.js"
+    }
+  },
+  "sideEffects": [
+    "**/*.css"
+  ]
 }
