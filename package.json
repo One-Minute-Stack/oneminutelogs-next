@@ -1,6 +1,6 @@
 {
   "name": "@oneminutelogs/next",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A Lightweight npm package for working with one minute logs. Set up your logging pipeline within one minute.",
   "type": "module",
   "main": "dist/index.cjs",

@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { forwardRequest: sdkForwardRequest } = require('../dist/index.cjs');
+const { createLogger, forwardRequest: sdkForwardRequest } = require('../dist/index.cjs');
 const admin = { password: 'test-admin-password', sessionSecret: 'test-session-secret-'.repeat(3) };
 const forwardRequest = options => sdkForwardRequest({ admin, ...options });
 async function authenticated(request, basePath = '/api/oneminutelogs') {
@@ -69,19 +69,18 @@ test('does not forward incoming cookies or arbitrary headers upstream', async t 
 
 test('browser ingestion uses the existing server handler without log-reading authorization', async t => {
   const previousFetch = global.fetch;
-  const previousBase = process.env.OML_BASE_URL;
-  t.after(() => { global.fetch = previousFetch; if (previousBase === undefined) delete process.env.OML_BASE_URL; else process.env.OML_BASE_URL = previousBase; });
-  process.env.OML_BASE_URL = 'https://oml.test/api/v2';
+  t.after(() => { global.fetch = previousFetch; });
   let calls = 0;
   const payload = { schemaVersion: 1, batchId: 'test-batch', events: [{ type: 'javascript_error' }] };
   global.fetch = async (url, options) => {
     calls++;
-    assert.equal(url, 'https://oml.test/api/v2/rum/batches');
+    assert.equal(url, 'https://api.oneminutelogs.com/api/v2/rum/batches');
     assert.equal(options.headers['x-api-key'], 'server-only-key');
     assert.deepEqual(JSON.parse(new TextDecoder().decode(options.body)), payload);
     return Response.json({ batchId: payload.batchId, accepted: true });
   };
-  const handler = forwardRequest({ browser: { apiKey: 'server-only-key', projectName: 'shop', environment: 'development' } });
+  const logger = createLogger({ apiKey: 'server-only-key', projectName: 'shop', environment: 'development' });
+  const handler = forwardRequest({ logger });
   const makeRequest = origin => new Request('https://app.test/api/oneminutelogs/browser', {
     method: 'POST', headers: { 'content-type': 'application/json', origin }, body: JSON.stringify(payload),
   });

@@ -76,6 +76,9 @@ export {
 
 Use one catch-all route. Replace an existing `[type]` or `[types]` route instead of keeping both. Credentials stay on the server; dashboard access requires the admin session.
 
+The same `forwardRequest({ logger })` handler automatically enables browser
+telemetry using the logger's API key, project name, and environment.
+
 ### 3. Render the dashboard
 
 ```tsx
@@ -108,22 +111,8 @@ The embedded dashboard uses the `/api/oneminutelogs` route. Browser Health requi
 
 Install `@oneminutelogs/browser` and wrap your application with its `OMLProvider`. See the [browser SDK setup](https://github.com/One-Minute-Stack/oneminutelogs-browser#readme).
 
-Enable browser forwarding on the same catch-all handler:
-
-```ts
-const handler = forwardRequest({
-  logger,
-  browser: {
-    apiKey: process.env.ONE_MINUTE_LOGS_API_KEY!,
-    projectName: "my-app",
-    environment: process.env.NODE_ENV || "development",
-    routeTemplates: ["/", "/jobs/[id]"],
-    endpointTemplates: ["/api/jobs/[id]"],
-  },
-});
-```
-
-Keep the method exports above and configure matching route and endpoint templates on `OMLProvider`. Browser submissions do not require a dashboard admin session.
+The existing `forwardRequest({ logger })` handler automatically forwards browser
+telemetry. Browser submissions do not require a dashboard admin session.
 
 ## Build a custom log view
 

@@ -2230,7 +2230,15 @@ function forwardRequest(options) {
             headers: { Allow: "POST" }
           });
         }
-        if (!options.browser) {
+        const loggerConfig = loggerConfiguration(options.logger);
+        const browserApiKey = options.apiKey ?? loggerConfig?.apiKey;
+        const browserProjectName = options.projectName ?? loggerConfig?.projectName;
+        const browser = options.browser ?? (browserApiKey && browserProjectName ? {
+          apiKey: browserApiKey,
+          projectName: browserProjectName,
+          environment: options.environment ?? loggerConfig?.environment ?? process.env.NODE_ENV ?? "development"
+        } : void 0);
+        if (!browser) {
           return Response.json({ error: "Browser telemetry is not configured" }, { status: 503 });
         }
         let browserServer;
@@ -2239,7 +2247,7 @@ function forwardRequest(options) {
         } catch {
           return Response.json({ error: "Browser telemetry requires @oneminutelogs/browser to be installed" }, { status: 503 });
         }
-        return browserServer.handleBrowserRequest(request, options.browser);
+        return browserServer.handleBrowserRequest(request, browser);
       }
       case "logs":
       case "stream":
