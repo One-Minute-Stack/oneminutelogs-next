@@ -1593,14 +1593,7 @@ var init_dashboard_server = __esm({
 
 // ../oneminutelogs-browser/dist/server/config.js
 function rumIngestionUrl() {
-  const env = globalThis.process?.env;
-  const base = env?.OML_BASE_URL?.trim() || "https://api.oneminutelogs.com/api/v2";
-  const url = new URL(`${base.replace(/\/+$/, "")}/rum/batches`);
-  if (!["https:", "http:"].includes(url.protocol) || url.username || url.password || url.search || url.hash)
-    throw new Error("Invalid OML base URL");
-  if (url.protocol === "http:" && (env?.NODE_ENV !== "development" || !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)))
-    throw new Error("OML API-key forwarding requires HTTPS");
-  return url.href;
+  return "https://api.oneminutelogs.com/api/v2/rum/batches";
 }
 var init_config2 = __esm({
   "../oneminutelogs-browser/dist/server/config.js"() {
