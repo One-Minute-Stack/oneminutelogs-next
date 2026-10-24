@@ -36,3 +36,20 @@ test("API Performance keeps endpoint controls client-side", () => {
   assert.match(source, /setMethod\(e\.target\.value\);\s*setOffset\(0\)/);
   assert.doesNotMatch(source, /setTimeout\(\(\) => \{\s*setSearch/);
 });
+
+test("dashboard separates server API metrics from browser network metrics", () => {
+  const source = read("dashboard.js");
+
+  assert.match(source, /Endpoints observed in server telemetry/);
+  assert.match(source, /Server-observed metrics/);
+  assert.match(source, /Measured on the server/);
+  assert.doesNotMatch(source, /Endpoints observed in browser traffic/);
+  assert.match(source, /Browser HTTP Requests/);
+  assert.match(source, /Browser latency/);
+  assert.match(source, /View server metrics/);
+  assert.match(source, /apiPerformanceMatch/);
+  assert.match(source, /networkOffset=\$\{networkOffset\}/);
+  assert.match(source, /Previous browser requests/);
+  assert.match(source, /Next browser requests/);
+  assert.doesNotMatch(source, /Recent Browser Errors/);
+});

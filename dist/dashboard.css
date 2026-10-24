@@ -2225,6 +2225,28 @@
   font-size: 11px;
   line-height: 1.7;
 }
+.rum_apiLink {
+  border: 0;
+  padding: 0;
+  color: var(--oml-color-4599ff);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rum_apiLink:hover {
+  text-decoration: underline;
+}
+.rum_networkEmpty {
+  margin: 0;
+  padding: 20px;
+  border-top: 1px solid var(--oml-color-292929);
+  color: var(--oml-color-888);
+  font-size: 11px;
+}
+.rum_browserIssues {
+  margin-top: 20px;
+}
 .rum_issues {
   padding: 0 20px 20px;
 }
@@ -2236,8 +2258,7 @@
 .rum_issue + .rum_issue {
   margin-top: 10px;
 }
-.rum_issue > summary,
-.rum_recentError > summary {
+.rum_issue > summary {
   display: flex;
   align-items: center;
   gap: 18px;
@@ -2299,8 +2320,7 @@
   color: var(--oml-color-4599ff);
   font-size: 18px;
 }
-.rum_issue[open] > summary > .rum_expand,
-.rum_recentError[open] > summary > .rum_expand {
+.rum_issue[open] > summary > .rum_expand {
   transform: rotate(45deg);
 }
 .rum_issueEvidence {
@@ -2387,23 +2407,6 @@
   font-size: 11px;
   line-height: 1.7;
 }
-.rum_recent {
-  margin-top: 20px;
-}
-.rum_recentError {
-  border-top: 1px solid var(--oml-color-292929);
-}
-.rum_recentError > summary {
-  padding: 18px 20px;
-}
-.rum_recentError time {
-  color: var(--oml-color-888);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-.rum_recent > .rum_note {
-  padding: 0 20px;
-}
 .rum_rum summary:focus-visible {
   outline: 2px solid var(--oml-color-4599ff);
   outline-offset: -2px;
@@ -2422,9 +2425,6 @@
   }
   .rum_expand {
     margin-left: auto;
-  }
-  .rum_recentError > summary {
-    flex-wrap: wrap;
   }
 }
 

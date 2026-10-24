@@ -37,6 +37,25 @@ test('API performance forwards the 500-endpoint snapshot and rejects oversized l
   assert.equal(calls, 1);
 });
 
+test('Browser Health forwards only a validated server-side network offset', async t => {
+  const previous = global.fetch;
+  t.after(() => { global.fetch = previous; });
+  let calls = 0;
+  global.fetch = async url => {
+    calls++;
+    assert.equal(new URL(url).searchParams.get('networkOffset'), '20');
+    return Response.json({ network: { endpoints: [] } });
+  };
+  const handler = forwardRequest({ admin, apiKey: 'browser-page-key', projectName: 'shop', baseUrl: 'https://oml.test/api/v2' });
+  const cookie = await cookieFor(handler);
+  const request = offset => handler(new Request(`https://app.test/api/oneminutelogs/dashboard/browser-health?range=7d&networkOffset=${offset}`, { headers: { cookie } }));
+  assert.equal((await request(20)).status, 200);
+  const invalid = await request(-10);
+  assert.equal(invalid.status, 400);
+  assert.deepEqual(await invalid.json(), { error: 'Invalid network offset' });
+  assert.equal(calls, 1);
+});
+
 test('every embedded dashboard route requires authorization before upstream access', async t => {
   const previous = global.fetch;
   t.after(() => { global.fetch = previous; });

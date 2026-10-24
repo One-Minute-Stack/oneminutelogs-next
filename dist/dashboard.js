@@ -1347,7 +1347,7 @@ function Summary({ data }) {
         /* @__PURE__ */ jsxs3("article", { children: [
           /* @__PURE__ */ jsx3("span", { children: "Average response time" }),
           /* @__PURE__ */ jsx3("strong", { children: latency(data.averageMs) }),
-          /* @__PURE__ */ jsx3("small", { children: "Measured in the browser" })
+          /* @__PURE__ */ jsx3("small", { children: "Measured on the server" })
         ] }),
         /* @__PURE__ */ jsxs3("article", { children: [
           /* @__PURE__ */ jsx3("span", { children: "Error rate" }),
@@ -1378,7 +1378,7 @@ function EndpointDetail({
         ] }),
         /* @__PURE__ */ jsx3("p", { children: "Last 7 days \xB7 Endpoint metrics" })
       ] }),
-      /* @__PURE__ */ jsx3("span", { className: apm_default.browserLabel, children: "Browser-observed metrics" })
+      /* @__PURE__ */ jsx3("span", { className: apm_default.browserLabel, children: "Server-observed metrics" })
     ] }),
     /* @__PURE__ */ jsxs3(
       "section",
@@ -1394,10 +1394,7 @@ function EndpointDetail({
           /* @__PURE__ */ jsxs3("article", { children: [
             /* @__PURE__ */ jsx3("span", { children: "Average response time" }),
             /* @__PURE__ */ jsx3("strong", { children: latency(endpoint.averageMs) }),
-            /* @__PURE__ */ jsxs3("small", { children: [
-              "Maximum ",
-              latency(endpoint.maximumMs)
-            ] })
+            /* @__PURE__ */ jsx3("small", { children: "Measured on the server" })
           ] }),
           /* @__PURE__ */ jsxs3("article", { children: [
             /* @__PURE__ */ jsx3("span", { children: "Error rate" }),
@@ -1408,12 +1405,9 @@ function EndpointDetail({
             ] })
           ] }),
           /* @__PURE__ */ jsxs3("article", { children: [
-            /* @__PURE__ */ jsx3("span", { children: "Slow requests" }),
-            /* @__PURE__ */ jsx3("strong", { children: rate(endpoint.slow, endpoint.requests) }),
-            /* @__PURE__ */ jsxs3("small", { children: [
-              number2(endpoint.slow),
-              " requests reported slow by RUM"
-            ] })
+            /* @__PURE__ */ jsx3("span", { children: "Maximum response time" }),
+            /* @__PURE__ */ jsx3("strong", { children: latency(endpoint.maximumMs) }),
+            /* @__PURE__ */ jsx3("small", { children: "Measured on the server" })
           ] })
         ]
       }
@@ -1421,7 +1415,9 @@ function EndpointDetail({
     /* @__PURE__ */ jsx3(EndpointLogs, { method: endpoint.method, endpoint: endpoint.route })
   ] });
 }
-function Apm() {
+function Apm({
+  openEndpoint
+}) {
   const cache = useDashboardCache();
   const [selected, setSelected] = useState3(null);
   const [query, setQuery] = useState3("");
@@ -1463,6 +1459,13 @@ function Apm() {
   const pageSize = 25;
   const filtered = matchingEndpoints.slice(offset, offset + pageSize);
   const summary = data?.summary;
+  useEffect3(() => {
+    if (!openEndpoint || !data) return;
+    const endpoint = data.endpoints.find(
+      (item) => item.method === openEndpoint.method && item.route === openEndpoint.route
+    );
+    if (endpoint) setSelected(endpoint);
+  }, [data, openEndpoint]);
   if (selected)
     return /* @__PURE__ */ jsx3(
       EndpointDetail,
@@ -1497,7 +1500,7 @@ function Apm() {
       /* @__PURE__ */ jsxs3("div", { className: apm_default.panelHeading, children: [
         /* @__PURE__ */ jsxs3("div", { children: [
           /* @__PURE__ */ jsx3("h2", { id: "api-endpoints-heading", children: "API endpoints" }),
-          /* @__PURE__ */ jsx3("p", { children: "Endpoints observed in browser traffic. Last 7 days." })
+          /* @__PURE__ */ jsx3("p", { children: "Endpoints observed in server telemetry. Last 7 days." })
         ] }),
         /* @__PURE__ */ jsx3("span", { children: summary ? `${number2(summary.observedEndpoints)} endpoints` : "Loading\u2026" })
       ] }),
@@ -1677,9 +1680,11 @@ var rum_default = {
   rum: "rum_rum",
   periodBar: "rum_periodBar",
   note: "rum_note",
+  apiLink: "rum_apiLink",
+  networkEmpty: "rum_networkEmpty",
+  browserIssues: "rum_browserIssues",
   issues: "rum_issues",
   issue: "rum_issue",
-  recentError: "rum_recentError",
   issueType: "rum_issueType",
   issueTitle: "rum_issueTitle",
   issueMetric: "rum_issueMetric",
@@ -1689,8 +1694,7 @@ var rum_default = {
   evidence: "rum_evidence",
   facts: "rum_facts",
   stack: "rum_stack",
-  json: "rum_json",
-  recent: "rum_recent"
+  json: "rum_json"
 };
 
 // src/dashboard/rum.tsx
@@ -1755,24 +1759,28 @@ function Evidence({ event }) {
     ] })
   ] });
 }
-function Rum({ isActive = true }) {
+function Rum({
+  isActive = true,
+  onOpenApiEndpoint
+}) {
   const cache = useDashboardCache();
   const [period, setPeriod] = useState4("7d");
   const [hasSessions, setHasSessions] = useState4(false);
   const [kind, setKind] = useState4("All issues");
   const [query, setQuery] = useState4("");
+  const [networkOffset, setNetworkOffset] = useState4(0);
   const [data, setData] = useState4(null);
   const [loading, setLoading] = useState4(true);
   const [failed, setFailed] = useState4(false);
   useEffect4(() => {
     if (!isActive) return;
     let active = true;
-    const url2 = `/api/oneminutelogs/dashboard/browser-health?range=${period}`;
+    const url2 = `/api/oneminutelogs/dashboard/browser-health?range=${period}&networkOffset=${networkOffset}`;
     cache.remember(url2, async () => {
       const response = await fetch(url2, { cache: "no-store", signal: AbortSignal.timeout(2e4) });
       if (!response.ok) throw Error("Unable to load browser health");
       const next = await response.json();
-      if (!next.summary || !Array.isArray(next.issues) || !Array.isArray(next.recentErrors)) throw Error("Invalid browser health response");
+      if (!next.summary || !next.network || !Array.isArray(next.network.endpoints) || !Array.isArray(next.issues) || !Array.isArray(next.recentErrors)) throw Error("Invalid browser health response");
       return next;
     }).then((next) => {
       if (!active) return;
@@ -1787,8 +1795,7 @@ function Rum({ isActive = true }) {
     return () => {
       active = false;
     };
-  }, [period, isActive, cache]);
-  const errors = data?.recentErrors ?? [];
+  }, [period, networkOffset, isActive, cache]);
   const issues = (data?.issues ?? []).map((issue) => ({ ...issue, example: issue.evidence[0] })).filter(
     ({ evidence, example }) => example && (kind === "All issues" || (kind === "JavaScript" ? example.type === "javascript_error" : example.type === "network_error")) && `${title(example)} ${evidence.map((event) => event.route).join(" ")}`.toLowerCase().includes(query.toLowerCase().trim())
   );
@@ -1806,6 +1813,7 @@ function Rum({ isActive = true }) {
               setLoading(true);
               setFailed(false);
               setData(null);
+              setNetworkOffset(0);
               setPeriod(event.target.value);
             },
             children: [
@@ -1845,7 +1853,68 @@ function Rum({ isActive = true }) {
     ] }),
     failed && /* @__PURE__ */ jsx4("p", { className: rum_default.note, role: "alert", children: "Browser health could not be loaded. Try again after reopening this page." }),
     /* @__PURE__ */ jsx4("p", { className: rum_default.note, children: "Activity reflects received RUM health events, not every open browser. Session IDs are anonymous correlation identifiers. Counts use recorded occurrences; network summaries are not counted again." }),
-    /* @__PURE__ */ jsxs4("section", { className: apm_default.panel, "aria-labelledby": "browser-issues-heading", children: [
+    /* @__PURE__ */ jsxs4("section", { className: apm_default.panel, "aria-labelledby": "browser-network-heading", children: [
+      /* @__PURE__ */ jsxs4("div", { className: apm_default.panelHeading, children: [
+        /* @__PURE__ */ jsxs4("div", { children: [
+          /* @__PURE__ */ jsx4("h2", { id: "browser-network-heading", children: "Browser HTTP Requests" }),
+          /* @__PURE__ */ jsx4("p", { children: "Request volume, browser-measured latency, and network failures." })
+        ] }),
+        /* @__PURE__ */ jsx4("span", { children: loading ? "Loading\u2026" : `${data?.summary.browserRequests.toLocaleString() ?? 0} requests \xB7 ${data?.summary.browserAverageMs === null ? "\u2014" : `${Math.round(data?.summary.browserAverageMs ?? 0)} ms`} browser average` })
+      ] }),
+      /* @__PURE__ */ jsx4("div", { className: apm_default.tableScroll, children: /* @__PURE__ */ jsxs4("table", { className: apm_default.endpointTable, children: [
+        /* @__PURE__ */ jsx4("thead", { children: /* @__PURE__ */ jsxs4("tr", { children: [
+          /* @__PURE__ */ jsx4("th", { children: "Endpoint" }),
+          /* @__PURE__ */ jsx4("th", { children: "Requests" }),
+          /* @__PURE__ */ jsx4("th", { children: "Browser latency" }),
+          /* @__PURE__ */ jsx4("th", { children: "Network failures" }),
+          /* @__PURE__ */ jsx4("th", { children: /* @__PURE__ */ jsx4("span", { className: apm_default.srOnly, children: "API Performance" }) })
+        ] }) }),
+        /* @__PURE__ */ jsx4("tbody", { children: (data?.network.endpoints ?? []).map((endpoint) => /* @__PURE__ */ jsxs4("tr", { children: [
+          /* @__PURE__ */ jsxs4("td", { children: [
+            /* @__PURE__ */ jsx4("span", { className: `${apm_default.method} ${apm_default[endpoint.method.toLowerCase()]}`, children: endpoint.method }),
+            " ",
+            /* @__PURE__ */ jsx4("code", { children: endpoint.endpoint })
+          ] }),
+          /* @__PURE__ */ jsx4("td", { className: apm_default.numeric, children: endpoint.requests.toLocaleString() }),
+          /* @__PURE__ */ jsx4("td", { className: apm_default.numeric, children: endpoint.averageMs === null ? "\u2014" : `${Math.round(endpoint.averageMs)} ms` }),
+          /* @__PURE__ */ jsx4("td", { className: `${apm_default.numeric} ${endpoint.failures ? apm_default.error : ""}`, children: endpoint.failures.toLocaleString() }),
+          /* @__PURE__ */ jsx4("td", { children: endpoint.apiPerformanceMatch && /* @__PURE__ */ jsx4("button", { className: rum_default.apiLink, onClick: () => onOpenApiEndpoint?.(endpoint), children: "View server metrics" }) })
+        ] }, `${endpoint.method}:${endpoint.endpoint}`)) })
+      ] }) }),
+      !loading && !failed && !data?.network.endpoints.length && /* @__PURE__ */ jsx4("p", { className: rum_default.networkEmpty, children: "No browser HTTP requests recorded in this period." }),
+      /* @__PURE__ */ jsxs4("div", { className: apm_default.tableFooter, children: [
+        /* @__PURE__ */ jsx4("span", { children: data ? `Showing ${data.network.endpoints.length ? data.network.pagination.offset + 1 : 0}\u2013${data.network.pagination.offset + data.network.endpoints.length} of ${data.network.pagination.total} endpoints` : "Loading endpoints\u2026" }),
+        /* @__PURE__ */ jsxs4("div", { className: apm_default.pagination, "aria-label": "Browser request pages", children: [
+          /* @__PURE__ */ jsx4(
+            "button",
+            {
+              "aria-label": "Previous browser requests",
+              disabled: loading || networkOffset === 0,
+              onClick: () => {
+                setLoading(true);
+                setFailed(false);
+                setNetworkOffset((value) => Math.max(0, value - 10));
+              },
+              children: "\u2190"
+            }
+          ),
+          /* @__PURE__ */ jsx4(
+            "button",
+            {
+              "aria-label": "Next browser requests",
+              disabled: loading || !data?.network.pagination.hasMore,
+              onClick: () => {
+                setLoading(true);
+                setFailed(false);
+                setNetworkOffset((value) => value + 10);
+              },
+              children: "\u2192"
+            }
+          )
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxs4("section", { className: `${apm_default.panel} ${rum_default.browserIssues}`, "aria-labelledby": "browser-issues-heading", children: [
       /* @__PURE__ */ jsxs4("div", { className: apm_default.panelHeading, children: [
         /* @__PURE__ */ jsxs4("div", { children: [
           /* @__PURE__ */ jsx4("h2", { id: "browser-issues-heading", children: "Browser Issues" }),
@@ -1948,54 +2017,7 @@ function Rum({ isActive = true }) {
           ] }, key)
         )
       ] })
-    ] }),
-    /* @__PURE__ */ jsxs4(
-      "section",
-      {
-        className: `${apm_default.panel} ${rum_default.recent}`,
-        "aria-labelledby": "recent-browser-errors-heading",
-        children: [
-          /* @__PURE__ */ jsxs4("div", { className: apm_default.panelHeading, children: [
-            /* @__PURE__ */ jsxs4("div", { children: [
-              /* @__PURE__ */ jsx4("h2", { id: "recent-browser-errors-heading", children: "Recent Browser Errors" }),
-              /* @__PURE__ */ jsx4("p", { children: "JavaScript diagnostics with page and session context." })
-            ] }),
-            /* @__PURE__ */ jsx4("span", { children: loading ? "Loading\u2026" : `${errors.length} recent event records` })
-          ] }),
-          data?.hasMoreErrors && /* @__PURE__ */ jsx4("p", { className: rum_default.note, children: "Showing the latest 20 JavaScript diagnostic records." }),
-          loading ? /* @__PURE__ */ jsx4("div", { role: "status", "aria-label": "Loading recent browser errors", children: Array.from({ length: 3 }, (_, index) => /* @__PURE__ */ jsx4(
-            "div",
-            {
-              "aria-hidden": "true",
-              className: rum_default.recentError,
-              style: { padding: 24, minHeight: 90 },
-              children: /* @__PURE__ */ jsx4("span", { className: apm_default.skeleton, style: { width: "60%" } })
-            },
-            index
-          )) }) : failed ? /* @__PURE__ */ jsx4("p", { className: rum_default.note, children: "Recent errors unavailable." }) : errors.length === 0 ? /* @__PURE__ */ jsx4("p", { className: rum_default.note, children: "No JavaScript errors recorded in this period." }) : [...errors].sort((a, b) => b.lastSeenAt - a.lastSeenAt).map((event) => /* @__PURE__ */ jsxs4("details", { className: rum_default.recentError, children: [
-            /* @__PURE__ */ jsxs4("summary", { children: [
-              /* @__PURE__ */ jsxs4("time", { children: [
-                time(event.lastSeenAt),
-                " UTC"
-              ] }),
-              /* @__PURE__ */ jsx4("span", { className: apm_default.error, children: event.name }),
-              /* @__PURE__ */ jsxs4("span", { className: rum_default.issueTitle, children: [
-                /* @__PURE__ */ jsx4("strong", { children: event.message }),
-                /* @__PURE__ */ jsxs4("small", { children: [
-                  event.route,
-                  " \xB7 ",
-                  event.sessionId,
-                  " \xB7 \xD7",
-                  event.occurrences
-                ] })
-              ] }),
-              /* @__PURE__ */ jsx4("span", { className: rum_default.expand, children: "+" })
-            ] }),
-            /* @__PURE__ */ jsx4(Evidence, { event })
-          ] }, event.eventId))
-        ]
-      }
-    )
+    ] })
   ] });
 }
 
@@ -2092,7 +2114,7 @@ var mergeRealtimeLogs = (previous, next) => [
 );
 function presentLog(log) {
   const grouping = log.grouping;
-  const duration = log.attributes["duration_ms"] ?? log.attributes["duration.ms"] ?? log.attributes["http.duration_ms"] ?? log.attributes["db.duration_ms"] ?? log.attributes["durationMs"] ?? log.attributes["maxLatencyMs"];
+  const duration = log.attributes["perf.duration_ms"] ?? log.attributes["duration_ms"] ?? log.attributes["duration.ms"] ?? log.attributes["http.duration_ms"] ?? log.attributes["db.duration_ms"] ?? log.attributes["durationMs"] ?? log.attributes["maxLatencyMs"];
   const ms = typeof duration === "number" || typeof duration === "string" && duration.trim() !== "" ? Number(duration) : NaN;
   return {
     ...log,
@@ -4848,6 +4870,7 @@ function Icon({ name, className }) {
 function Page({ styling }) {
   const cache = useDashboardCache();
   const [incidentKey, setIncidentKey] = useState11();
+  const [apiEndpoint, setApiEndpoint] = useState11(null);
   const [active, setActive] = useState11(
     () => typeof window === "undefined" ? sections[0] : sections.find((section) => section.icon === window.location.hash.slice(1)) ?? sections[0]
   );
@@ -4985,7 +5008,7 @@ function Page({ styling }) {
                 if (section) select(section);
               }
             }
-          ) : active.name === "API Performance" ? /* @__PURE__ */ jsx10(Apm, {}) : active.name === "Browser Health" ? null : active.name === "Realtime Logs" ? null : active.name === "Incidents" ? /* @__PURE__ */ jsx10(Incidents, { initialConditionKey: incidentKey }) : active.name === "Alerts" ? /* @__PURE__ */ jsx10(
+          ) : active.name === "API Performance" ? /* @__PURE__ */ jsx10(Apm, { openEndpoint: apiEndpoint }) : active.name === "Browser Health" ? null : active.name === "Realtime Logs" ? null : active.name === "Incidents" ? /* @__PURE__ */ jsx10(Incidents, { initialConditionKey: incidentKey }) : active.name === "Alerts" ? /* @__PURE__ */ jsx10(
             Alerts,
             {
               isFreePlan: !billingUsage || billingUsage.plan.name === "free",
@@ -4996,7 +5019,10 @@ function Page({ styling }) {
               }
             }
           ) : /* @__PURE__ */ jsx10(Billing, { data: billingUsage, failed: usageFailed }),
-          (rumVisited || active.name === "Browser Health") && /* @__PURE__ */ jsx10("div", { hidden: active.name !== "Browser Health", style: { display: active.name === "Browser Health" ? "block" : "none" }, children: /* @__PURE__ */ jsx10(Rum, { isActive: active.name === "Browser Health" }) }),
+          (rumVisited || active.name === "Browser Health") && /* @__PURE__ */ jsx10("div", { hidden: active.name !== "Browser Health", style: { display: active.name === "Browser Health" ? "block" : "none" }, children: /* @__PURE__ */ jsx10(Rum, { isActive: active.name === "Browser Health", onOpenApiEndpoint: (endpoint) => {
+            setApiEndpoint({ method: endpoint.method, route: endpoint.endpoint });
+            select(sections[1]);
+          } }) }),
           (logsVisited || active.name === "Realtime Logs") && /* @__PURE__ */ jsx10("div", { hidden: active.name !== "Realtime Logs", style: { display: active.name === "Realtime Logs" ? "flex" : "none", flex: 1, minHeight: 0 }, children: /* @__PURE__ */ jsx10(RealtimeLogs, { isActive: active.name === "Realtime Logs", onBilling: () => select(sections[6]) }) })
         ]
       }

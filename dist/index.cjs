@@ -516,6 +516,10 @@ async function GET3(omlConfig, request) {
   if (ranges.length > 1 || ranges.length === 1 && !["7d", "24h", "1h"].includes(ranges[0]))
     return failure3(400, "Invalid range");
   query.set("range", ranges[0] || "7d");
+  const offsets = incoming.getAll("networkOffset");
+  if (offsets.length > 1 || offsets.length === 1 && !/^\d{1,7}$/.test(offsets[0]) || Number(offsets[0] || 0) > 1e6)
+    return failure3(400, "Invalid network offset");
+  query.set("networkOffset", offsets[0] || "0");
   const apiKey = omlConfig.authToken?.trim() || omlConfig.apiKey?.trim();
   if (!apiKey || !omlConfig.projectName)
     return failure3(503, "Dashboard connection is not configured");
